@@ -3,7 +3,7 @@
   "name": "io.github.pipeworx-io/comtrade",
   "title": "Comtrade",
   "description": "Comtrade MCP — UN Comtrade API for international bilateral trade data",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "websiteUrl": "https://pipeworx.io/packs/comtrade",
   "repository": {
     "url": "https://github.com/pipeworx-io/mcp-comtrade",

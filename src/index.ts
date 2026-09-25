@@ -680,7 +680,23 @@ const tools: McpToolExport['tools'] = [
         },
         hs_code: {
           type: 'string',
-          description: 'HS commodity code at 2/4/6 digit level (e.g., "8471" for computers). Optional — omit for all commodities.',
+          description: 'HS commodity code at 2/4/6 digit level (e.g., "8471" for computers, "2603" for copper ores). Optional — omit for all commodities. Aliases accepted: commodity_code, commodity, hs, cmd_code (pass exactly one of hs_code/commodity_code/commodity/hs/cmd_code — do not need hs_code as well).',
+        },
+        commodity_code: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code (e.g. "2603" for copper ores). Use this OR hs_code, not both.',
+        },
+        commodity: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
+        },
+        hs: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
+        },
+        cmd_code: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
         },
         flow: {
           type: 'string',
@@ -715,7 +731,23 @@ const tools: McpToolExport['tools'] = [
         },
         hs_code: {
           type: 'string',
-          description: 'Optional HS commodity code to filter by specific product',
+          description: 'Optional HS commodity code to filter by specific product (e.g. "2603" for copper ores) — omit for all commodities (TOTAL). Aliases accepted: commodity_code, commodity, hs, cmd_code (pass exactly one).',
+        },
+        commodity_code: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code (e.g. "2603" for copper ores). Use this OR hs_code, not both.',
+        },
+        commodity: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
+        },
+        hs: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
+        },
+        cmd_code: {
+          type: 'string',
+          description: 'Alias for hs_code — HS commodity code. Use this OR hs_code, not both.',
         },
         limit: {
           type: 'number',
@@ -1063,13 +1095,49 @@ const NAME_TO_CODE: Record<string, string> = {};
 for (const [code, name] of Object.entries(CODE_TO_COUNTRY)) {
   NAME_TO_CODE[name.toLowerCase().replace(/[^a-z]/g, '')] = code;
 }
+// Common-name/ISO overrides for reporters whose OFFICIAL Comtrade name (in
+// CODE_TO_COUNTRY above, and therefore the auto-generated key above) is not
+// the name a caller would actually type. Live-verified rejections: "Turkey",
+// "Moldova", "Tanzania" and "Laos" all 400'd because Comtrade's own name
+// strips to a different normalized key ("Türkiye" -> "trkiye" once accents
+// are stripped, "Rep. of Moldova" -> "repofmoldova", etc.) — the class this
+// fixes, not just those four (fleet fix-pack, paying-subscriber traffic).
 Object.assign(NAME_TO_CODE, {
   us: '842', usa: '842', unitedstates: '842', unitedstatesofamerica: '842', america: '842',
   uk: '826', britain: '826', greatbritain: '826', unitedkingdom: '826', england: '826',
-  korea: '410', southkorea: '410', rok: '410',
+  korea: '410', southkorea: '410', rok: '410', northkorea: '408',
   uae: '784', unitedarabemirates: '784',
   russia: '643', russianfederation: '643',
   vietnam: '704', hongkong: '344', taiwan: '490', world: '0',
+  // Türkiye — official Comtrade name strips its diacritic to a key ("trkiye")
+  // nobody would type; cover both the plain and accent-typed spellings.
+  turkey: '792', turkiye: '792',
+  // Rep. of Moldova
+  moldova: '498', republicofmoldova: '498',
+  // United Rep. of Tanzania
+  tanzania: '834',
+  // Lao People's Dem. Rep.
+  laos: '418', laopdr: '418', laopeoplesdemocraticrepublic: '418',
+  // Czechia / Czech Republic — Czechia already matches directly; the older
+  // common name does not.
+  czechrepublic: '203',
+  // Bolivia (Plurinational State of)
+  bolivia: '68', plurinationalstateofbolivia: '68',
+  // Côte d'Ivoire / Ivory Coast — apostrophe + accent stripping leaves the
+  // official-name key mismatched against either common spelling.
+  cotedivoire: '384', ivorycoast: '384',
+  // DR Congo vs Congo (Brazzaville) — two different countries, two different
+  // codes; "congo" alone already matches the Congo (178) official name.
+  drcongo: '180', democraticrepublicofcongo: '180', congokinshasa: '180',
+  republicofcongo: '178', congobrazzaville: '178',
+  // North Macedonia / Macedonia (old name)
+  macedonia: '807',
+  // Eswatini / Swaziland (old name)
+  swaziland: '748',
+  // Cabo Verde / Cape Verde (old name)
+  capeverde: '132',
+  // Myanmar / Burma (old name)
+  burma: '104',
 });
 
 function toCode(input: unknown): string | null {
@@ -1084,6 +1152,48 @@ function unresolved(field: string, val: unknown) {
     error: 'unknown_country',
     message: `Could not resolve ${field} "${String(val)}". Pass a country name (e.g. "USA", "China", "Germany") or a UN numeric code (e.g. 842 = US, 156 = China), or call comtrade_country_codes.`,
   };
+}
+
+// Verified live 2026-09-25: comtrade_top_partners called with
+// `commodity_code: "2603"` (instead of the schema's declared `hs_code`) came
+// back as a class-success 200 with 20 partners labelled commodity "TOTAL" —
+// the copper-ore question silently answered with all-goods trade instead
+// (Chile/Peru's real copper-ore ranking only appeared once `hs_code` was
+// used). The gateway does not strip an undeclared arg from what reaches the
+// pack, it just flags it in `_meta.ignored_args` — so the bug was entirely
+// ours: nothing here ever looked at `commodity_code`. Fixed two ways: these
+// aliases are declared in every hs_code-taking tool's schema (stops the
+// ignored_args flag) AND resolved here (stops the silent TOTAL fallback).
+const HS_CODE_ALIASES = ['hs_code', 'commodity_code', 'commodity', 'hs', 'cmd_code'] as const;
+
+function resolveHsCode(args: Record<string, unknown>): { hsCode?: string; error?: { error: string; message: string } } {
+  for (const key of HS_CODE_ALIASES) {
+    const v = args[key];
+    if (v !== undefined && v !== null && String(v).trim() !== '') {
+      return { hsCode: String(v).trim() };
+    }
+  }
+  // A commodity-shaped arg name that is NOT one of the declared aliases (e.g.
+  // a typo'd "product_code" or "hsCode") would previously vanish into TOTAL
+  // with no trace. Refuse instead of guessing — omitting hs_code entirely
+  // (no commodity-shaped key at all) is the legitimate "all commodities" case
+  // and is left alone.
+  const nearMiss = Object.keys(args).find(
+    (k) =>
+      !(HS_CODE_ALIASES as readonly string[]).includes(k) &&
+      /^(hs|cmd|commodity|product)/i.test(k) &&
+      args[k] != null &&
+      String(args[k]).trim() !== '',
+  );
+  if (nearMiss) {
+    return {
+      error: {
+        error: 'unrecognized_commodity_argument',
+        message: `"${nearMiss}" is not a recognized commodity argument. Use one of: ${HS_CODE_ALIASES.join(', ')}.`,
+      },
+    };
+  }
+  return {};
 }
 
 function resolveRecord(r: ComtradeRecord) {
@@ -1399,14 +1509,18 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       if (!pc) return unresolved('partner_code', args.partner_code);
       const freq = resolveFrequency(args);
       if ('error' in freq) return freq;
-      return getTradeData(rc, pc, freq.period, args.hs_code as string | undefined, args.flow as string | undefined, freq.frequency);
+      const hs = resolveHsCode(args);
+      if (hs.error) return hs.error;
+      return getTradeData(rc, pc, freq.period, hs.hsCode, args.flow as string | undefined, freq.frequency);
     }
     case 'comtrade_top_partners': {
       const rc = toCode(args.reporter_code);
       if (!rc) return unresolved('reporter_code', args.reporter_code);
       const freq = resolveFrequency(args);
       if ('error' in freq) return freq;
-      return getTopPartners(rc, freq.period, (args.flow as string) || 'M', args.hs_code as string | undefined, (args.limit as number) || 20, freq.frequency);
+      const hs = resolveHsCode(args);
+      if (hs.error) return hs.error;
+      return getTopPartners(rc, freq.period, (args.flow as string) || 'M', hs.hsCode, (args.limit as number) || 20, freq.frequency);
     }
     case 'comtrade_top_commodities': {
       const rc = toCode(args.reporter_code);
@@ -1427,4 +1541,4 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
 export default { tools, callTool, meter: { credits: 5 } } satisfies McpToolExport;
 
 // Exported for tests; the gateway consumes the default export only.
-export { describeCommodity };
+export { describeCommodity, toCode, resolveHsCode };
