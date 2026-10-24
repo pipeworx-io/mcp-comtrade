@@ -1,6 +1,6 @@
 {
   "name": "@pipeworx/mcp-comtrade",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Comtrade MCP — UN Comtrade API for international bilateral trade data",
   "type": "module",
   "main": "src/index.ts",
@@ -26,7 +26,7 @@
     "@cloudflare/workers-types": "^4.20260405.1"
   },
   "pipeworx": {
-    "sourceHash": "v1-92155ba0267e1acce5c17225201c5d8714bd2c5f03bf22dafed082a719e0f15b",
-    "sourceCommit": "b0a4b8e2f3f5b3a4c3f9f2c9a73f91b20d32ce11"
+    "sourceHash": "v1-ee4bca6b0e57ab01df1049342652d8ed12a7d7fcf3db8e429b9b62acc6e6a663",
+    "sourceCommit": "f1ef7a2f6b9cb1b8da1374ec2fcb28c661582b35"
   }
 }
