@@ -1,6 +1,6 @@
 {
   "name": "@pipeworx/mcp-comtrade",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Comtrade MCP — UN Comtrade API for international bilateral trade data",
   "type": "module",
   "main": "lib/index.js",
@@ -27,7 +27,7 @@
     "mode": "gateway",
     "slug": "comtrade",
     "gatewaySlug": "comtrade",
-    "sourceHash": "v1-8d9aeac4f8416bf683cfb8c628b8c20bdb9761a869112ade5895a7501053abd9",
-    "sourceCommit": "4277282d72f9bf55e548b3799aaf737baf22152f"
+    "sourceHash": "v1-0b9a4d1d43f8c7293b1be0c7604a41fa8b859c79e009b0d49336808cfa0a2869",
+    "sourceCommit": "8cc978183948532674e797c429305c9d8ab2a1c3"
   }
 }
